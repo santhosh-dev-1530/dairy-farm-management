@@ -1,0 +1,33 @@
+{
+  "name": "dairy-farm",
+  "version": "1.0.0",
+  "description": "Dairy Farm Management System - React Native App with Node.js Backend",
+  "private": true,
+  "workspaces": [
+    "mobile",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:mobile\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:mobile": "cd mobile && npm run start",
+    "install:all": "npm install && cd mobile && npm install && cd ../backend && npm install",
+    "build": "npm run build:backend && npm run build:mobile",
+    "build:backend": "cd backend && npm run build",
+    "build:mobile": "cd mobile && npm run build",
+    "test": "npm run test:backend && npm run test:mobile",
+    "test:backend": "cd backend && npm test",
+    "test:mobile": "cd mobile && npm test"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "react-native",
+    "nodejs",
+    "dairy-farm",
+    "management-system"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

@@ -109,6 +109,7 @@ model Cattle {
   assignments        Assignment[]
   seminationRecords  SeminationRecord[]
   pregnancyRecords   PregnancyRecord[]
+  pregnancyAsCalf    PregnancyRecord[] @relation("CattleParent")
   feedingRecords     FeedingRecord[]
   healthRecords      HealthRecord[]
   notifications      Notification[]

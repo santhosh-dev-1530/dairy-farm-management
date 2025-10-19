@@ -6,25 +6,227 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
-  relationMode = "prisma"
 }
 
 enum Role {
   ADMIN
-  MANAGER
-  WORKER
+  USER
 }
 
-model User {
+model Organization {
   id        String   @id @default(cuid())
-  username  String   @unique
-  email     String   @unique
-  password  String
-  role      Role     @default(WORKER)
+  name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations
+  users     User[]
+  cattle    Cattle[]
+  assignments Assignment[]
+  seminationRecords SeminationRecord[]
+  pregnancyRecords  PregnancyRecord[]
+  feedingRecords   FeedingRecord[]
+  healthRecords    HealthRecord[]
+  notifications    Notification[]
+
+  @@map("organizations")
+}
+
+enum CattleStatus {
+  ACTIVE
+  PREGNANT
+  SEPARATED
+  DECEASED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum RecordType {
+  DISEASE
+  INJECTION
+  CHECKUP
+}
+
+enum NotificationType {
+  PREGNANCY_CHECK_DUE
+  SEPARATION_REMINDER
+  HEALTH_ALERT
+  MILESTONE_REMINDER
+}
+
+model User {
+  id             String   @id @default(cuid())
+  username       String
+  email          String
+  password       String
+  role           Role     @default(USER)
+  fcmToken       String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  assignedCattle     Assignment[]     @relation("UserAssignments")
+  createdCattle      Cattle[]         @relation("UserCreatedCattle")
+  seminationRecords  SeminationRecord[]
+  pregnancyRecords   PregnancyRecord[]
+  feedingRecords     FeedingRecord[]
+  healthRecords      HealthRecord[]
+  notifications      Notification[]
+  assignments        Assignment[]     @relation("UserCreatedAssignments")
+
+  @@unique([username, organizationId])
+  @@unique([email, organizationId])
   @@map("users")
+}
+
+model Cattle {
+  id             String       @id @default(cuid())
+  tagNumber      String
+  name           String
+  breed          String
+  gender         Gender
+  dateOfBirth    DateTime
+  parentId       String?
+  parent         Cattle?      @relation("CattleParent", fields: [parentId], references: [id])
+  children       Cattle[]     @relation("CattleParent")
+  status         CattleStatus @default(ACTIVE)
+  photo          String?
+  assignedUserId String?
+  assignedUser   User?        @relation("UserCreatedCattle", fields: [assignedUserId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  assignments        Assignment[]
+  seminationRecords  SeminationRecord[]
+  pregnancyRecords   PregnancyRecord[]
+  feedingRecords     FeedingRecord[]
+  healthRecords      HealthRecord[]
+  notifications      Notification[]
+
+  @@unique([tagNumber, organizationId])
+  @@map("cattle")
+}
+
+model Assignment {
+  id             String   @id @default(cuid())
+  cattleId       String
+  cattle         Cattle   @relation(fields: [cattleId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation("UserAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  assignedAt     DateTime @default(now())
+  assignedBy     String
+  assignedByUser User     @relation("UserCreatedAssignments", fields: [assignedBy], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@unique([cattleId, userId])
+  @@map("assignments")
+}
+
+model SeminationRecord {
+  id             String    @id @default(cuid())
+  cattleId       String
+  cattle         Cattle    @relation(fields: [cattleId], references: [id], onDelete: Cascade)
+  seminationDate DateTime
+  checkDate      DateTime  // Auto-calculated: seminationDate + 15 days
+  isPregnant     Boolean?
+  checkedAt      DateTime?
+  notes          String?
+  createdById    String
+  createdBy      User      @relation(fields: [createdById], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+
+  // Relations
+  pregnancyRecord PregnancyRecord?
+
+  @@map("semination_records")
+}
+
+model PregnancyRecord {
+  id                  String    @id @default(cuid())
+  cattleId            String
+  cattle              Cattle    @relation(fields: [cattleId], references: [id], onDelete: Cascade)
+  seminationRecordId  String    @unique
+  seminationRecord    SeminationRecord @relation(fields: [seminationRecordId], references: [id])
+  expectedDeliveryDate DateTime
+  actualDeliveryDate  DateTime?
+  calfId              String?
+  calf                Cattle?   @relation("CattleParent", fields: [calfId], references: [id])
+  status              String    @default("IN_PROGRESS") // IN_PROGRESS, DELIVERED, SEPARATED
+  notes               String?
+  createdById         String
+  createdBy           User      @relation(fields: [createdById], references: [id])
+  organizationId      String
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@map("pregnancy_records")
+}
+
+model FeedingRecord {
+  id             String   @id @default(cuid())
+  cattleId       String
+  cattle         Cattle   @relation(fields: [cattleId], references: [id], onDelete: Cascade)
+  feedType       String
+  quantity       Float
+  waterGiven     Boolean  @default(false)
+  timestamp      DateTime @default(now())
+  recordedById   String
+  recordedBy     User     @relation(fields: [recordedById], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@map("feeding_records")
+}
+
+model HealthRecord {
+  id             String     @id @default(cuid())
+  cattleId       String
+  cattle         Cattle     @relation(fields: [cattleId], references: [id], onDelete: Cascade)
+  recordType     RecordType
+  description    String
+  medication     String?
+  dosage         String?
+  timestamp      DateTime   @default(now())
+  recordedById   String
+  recordedBy     User       @relation(fields: [recordedById], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime   @default(now())
+
+  @@map("health_records")
+}
+
+model Notification {
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cattleId       String?
+  cattle         Cattle?          @relation(fields: [cattleId], references: [id], onDelete: Cascade)
+  type           NotificationType
+  title          String
+  message        String
+  isRead         Boolean          @default(false)
+  scheduledFor   DateTime?
+  sentAt         DateTime?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime         @default(now())
+
+  @@map("notifications")
 } 

@@ -14,7 +14,12 @@ const cowRoutes = require("./routes/cows");
 const milkRoutes = require("./routes/milk");
 const healthRoutes = require("./routes/health");
 const feedingRoutes = require("./routes/feeding");
+const seminationRoutes = require("./routes/semination");
+const pregnancyRoutes = require("./routes/pregnancy");
+const notificationRoutes = require("./routes/notifications");
+const organizationRoutes = require("./routes/organization");
 const { errorHandler } = require("./middleware/errorHandler");
+const { startJobs } = require("./jobs/reminderJob");
 
 const app = express();
 const server = createServer(app);
@@ -58,6 +63,10 @@ app.use("/api/cows", cowRoutes);
 app.use("/api/milk", milkRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/feeding", feedingRoutes);
+app.use("/api/semination", seminationRoutes);
+app.use("/api/pregnancy", pregnancyRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/organizations", organizationRoutes);
 
 // Health check endpoint
 app.get("/api/health-check", (req, res) => {
@@ -95,6 +104,9 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || "development"}`);
+
+  // Start reminder jobs
+  startJobs();
 });
 
 // Graceful shutdown

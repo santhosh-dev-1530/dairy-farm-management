@@ -54,11 +54,6 @@ export const NotificationProvider = ({ children }) => {
           });
         });
 
-        // Handle background messages
-        messaging().setBackgroundMessageHandler(async remoteMessage => {
-          console.log('Background message received:', remoteMessage);
-        });
-
         return unsubscribe;
       } else {
         console.log('Notification permission denied');
